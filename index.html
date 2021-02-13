@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        .fill {
+            min-height: 100%;
+            height: 100%;
+        }
+
+        .message-container {
+            height: 90%;
+            min-height: 90%;
+            max-height: 90%;
+  display: flex;
+  justify-content: flex-end;
+  flex-direction: column;
+  overflow-y: scroll;
+}
+
+.self_message {
+background-color: grey;
+}
+
+.banned {
+    background-color: red;
+}
+    </style>
+</head>
+
+<body>
+    <div class="container fill" id="app">
+        <!-- <div class="d-flex flex-column">
+            <div class="p-2">Flex item 1</div>
+            <div class="p-2">Flex item 2</div>
+            <div class="p-2">Flex item 3</div>
+          </div> -->
+        <div class="d-flex flex-column fill">
+            <div class="message-container">
+
+                <div v-for="message in messages" >
+                    <span v-if="message.type == 'MSG'" :class="message.username == username ? 'self_message' : ''"><b>{{message.username}}</b>: {{message.message}}</span>
+                    <span v-else-if="message.type == 'JOIN'" :class="message.username == username ? 'self_message' : ''"><b>{{message.username}}</b> joined the channel</span>
+                    <span v-else-if="message.type == 'LEAVE'"><b>{{message.username}}</b> left the channel</span>
+                    <span v-else="message.type == 'BANNED'" class="banned"><b>{{message.username}}</b> banned {{message.word}}</span>
+                </div>
+
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div style="height: 10%; bottom: 0; width: 100%;">
+                        <input id="message_content" type="text">
+                        <button id="send_message" type="button">Send</button>
+                    </div>
+
+                </div>
+                <div class="col">
+                    <div style="height: 10%; bottom: 0; width: 100%;">
+                        <input id="ban_content" type="text">
+                        <button id="ban_button" type="button">Ban</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous">
+    </script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                messages: [],
+                username: null
+            },
+            mounted() {
+                var socket = io();
+
+                socket.emit("get username");
+                socket.on("get username", (username) => {
+                    this.username = username;
+                    console.log(this.username);
+                });
+
+                socket.on("user joined", (username) => {
+                    this.messages.push({
+                        type: "JOIN",
+                        username: username,
+                        time: new Date().getTime()
+                    });
+                });
+
+                socket.on("user left", (username) => {
+                    this.messages.push({
+                        type: "LEAVE",
+                        username: username,
+                        time: new Date().getTime()
+                    });
+                });
+
+                socket.on("chat message", (username, message) => {
+                    this.messages.push({
+                        type: "MSG",
+                        username: username,
+                        message: message,
+                        time: new Date().getTime()
+                    });
+                })
+
+                socket.on("word banned", (word, username) => {
+                    this.messages.push({
+                        type: "BANNED",
+                        username: username,
+                        word: word,
+                        time: new Date().getTime()
+                    });
+                });
+
+                var send_message = document.getElementById("send_message");
+                var message_content = document.getElementById("message_content");
+
+                send_message.onclick = () => {
+                    socket.emit("chat message", message_content.value);
+                    message_content.value = "";
+                };
+
+                var ban_word = document.getElementById("ban_content");
+                var ban_button = document.getElementById("ban_button");
+
+                $("#message_content").keyup(function(event) {
+                    if (event.keyCode === 13) {
+                        $("#send_message").click();
+                    }
+                });
+                $("#ban_content").keyup(function(event) {
+                    if (event.keyCode === 13) {
+                        $("#ban_button").click();
+                    }
+                });
+
+                ban_button.onclick = () => {
+                    socket.emit("ban word", ban_word.value);
+                    ban_word.value = "";
+                };
+            }
+        });
+    </script>
+</body>
+
+</html>
